@@ -5,17 +5,19 @@ config=$3
 
 helpFunc() {
   echo "Help:"
-  echo "Commands Available:"
+  echo "Available Commands:"
   echo "$(printf '\tstart environment')"
   echo "$(printf '\tstop environment')"
   echo "$(printf '\trestart environment')"
-  echo "$(printf '\tstart mock <configurationName>')"
-  echo "$(printf '\trun-only mock <configurationName>')"
+  echo "$(printf '\tcreate topics <topicsFile> -> (default: application-mock.yml)')"
+  echo "$(printf '\tstart mock <configurationName> -> (yml file to execute: application-mock-${configurationName}.yml)')"
+  echo "$(printf '\trun-only mock <configurationName> -> (yml file to execute: application-mock-${configurationName}.yml)')"
 }
 
 startEnvironment() {
   echo "Starting kafka environment..."
   docker-compose -f internal/environment/environment-compose.yml up -d
+  docker build -f internal/topics/Dockerfile -t ktc-application:latest .
 }
 
 stopEnvironment() {
@@ -27,6 +29,17 @@ restartEnvironment() {
   echo "Restarting kafka environment..."
   stopEnvironment
   startEnvironment
+}
+
+createTopics() {
+  docker rm -f ktc-container
+  if [ -z "$config" ]; then
+    echo "Starting topics from application-mock.yml..."
+    winpty docker run --network=host --name=ktc-container -t -i ktc-application
+    else
+      echo "Starting topics from $config..."
+    winpty docker run --network=host --name=ktc-container -t -i -e TOPICS_FILE="$config" ktc-application
+  fi
 }
 
 runOnlyMock() {
@@ -50,6 +63,9 @@ case $task in
   ;;
 "restart environment")
   restartEnvironment
+  ;;
+"create topics")
+  createTopics
   ;;
 "start mock")
   startMock
